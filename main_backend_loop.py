@@ -35,7 +35,7 @@ def main():
                 if instrument.class_code == "TQBR":
                     all_instruments.append(instrument)
 
-        # all_instruments = ["BBG004730N88"]       #если просто потестить, то можешь вот эту строчку юзать вместо предыдщущих
+        all_instruments = ["BBG004730N88"]       # если просто потестить, то можешь вот эту строчку юзать вместо предыдщущих
         timeframes = ["5min", "15min", "1h", "4h", "1d"]
         history = History(
             all_instruments,
@@ -79,23 +79,23 @@ def main():
             alerts_users_map[alert] = user
 
         cur.execute(
-            """SELECT alert_id, timeframe, instrument_id, multiplier
-                    FROM filter_abnormal_volume
+            """SELECT alert_id, high_volume_tf
+                    FROM filter_high_volume
             ;""",
         )
 
         abnormal_volume_alerts = cur.fetchall()
 
         cur.execute(
-            """SELECT alert_id, timeframe, instrument_id, rate_to_std
-                  FROM filter_price_change
+            """SELECT alert_id, high_volatility_tf, high_volatility_ret_std
+                  FROM filter_high_volatility
             ;""",
         )
 
         price_change_alerts = cur.fetchall()
 
         cur.execute(
-            """SELECT alert_id, timeframe, instrument_id, min_peaks_count
+            """SELECT alert_id, horizontal_level_tf, horizontal_level_peaks
                   FROM filter_horizontal_level
             ;""",
         )
@@ -109,7 +109,7 @@ def main():
                 abnormal_volume_alert[1],
                 all_instruments,
                 30,
-                abnormal_volume_alert[2],
+                2,
                 TOKEN,
                 history,
             )

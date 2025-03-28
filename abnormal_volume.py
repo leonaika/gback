@@ -14,7 +14,7 @@ def abnormal_volume(
     candle_type, instruments, number_of_candles, multiplier, token, history
 ) -> AlertResult:
 
-    alert_result = AlertResult(0, [], candle_type, "abnormal_volume")
+    alert_result = AlertResult(0, [], candle_type, "abnormal_volume")  # why candle_type?
 
     for instrument in instruments:
 
