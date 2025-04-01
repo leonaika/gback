@@ -14,6 +14,7 @@ import requests
 import time
 from tinkoff.invest import Client, AsyncClient, CandleInterval
 import zoneinfo
+from instruments_blacklist import instruments_blacklist
 
 
 HOST = os.getenv("HOST")
@@ -32,13 +33,14 @@ def main():
         all_instruments = []
         with Client(TOKEN) as client:
             r = client.instruments.shares()
+            c = 0
             for instrument in r.instruments:
-                if instrument.class_code == "TQBR":
-                    all_instruments.append(instrument)
+                if (instrument.class_code == "TQBR") and (instrument.figi not in instruments_blacklist):
+                    all_instruments.append(instrument.figi)
 
-        all_instruments = [
-            "BBG004730N88"
-        ]  # если просто потестить, то можешь вот эту строчку юзать вместо предыдщущих
+        # all_instruments = [
+        #     "BBG004730N88"
+        # ]  # если просто потестить, то можешь вот эту строчку юзать вместо предыдщущих
         timeframes = ["5min", "15min", "1h", "4h", "1d"]
         history = History(
             all_instruments,
@@ -55,7 +57,8 @@ def main():
 
         if not check_time():
             continue
-
+        
+        print('sleeping...')
         time.sleep(10)
 
         conn = pg8000.connect(
@@ -174,9 +177,10 @@ def main():
                 )
 
         for alert in alerts_users_map:
+            print(alerts_users_map[alert])
             result = alerts_users_map[alert]
             if len(result.instruments):
-                url = "http://0.0.0.0:8000/send-message/"
+                url = "http://0.0.0.0:8080/send-message/"
                 data = {
                     "alert_id": result.alert_id,
                     "instruments": list(result.instruments),

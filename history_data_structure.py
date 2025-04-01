@@ -3,6 +3,8 @@ from async_all_candles import get_all_candles
 import numpy as np
 import os
 from tinkoff.invest import Client, AsyncClient, CandleInterval
+from tqdm import tqdm
+
 
 
 HOST = os.getenv("HOST")
@@ -79,7 +81,8 @@ class History:
 
     def create_history(self) -> None:
 
-        for instrument in self.instruments:
+        for instrument in tqdm(self.instruments):
+            tqdm.write(instrument)
 
             for candle_timeframe in self.candle_timeframes:
 
@@ -89,6 +92,7 @@ class History:
                 )
 
                 self.last_candle[instrument][candle_timeframe]["date_time"] = (
+
                     self.history[instrument][candle_timeframe]["date_time"][-1]
                 )
 
