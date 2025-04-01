@@ -44,9 +44,9 @@ def is_on_horizontal_level(
     price_radius,
     token,
     history,
-) -> AlertResult:
+) -> set[str]:
 
-    alert_result = AlertResult(0, [], candle_type, "horizontal_level")
+    results = set()
 
     for instrument in instruments:
 
@@ -73,6 +73,6 @@ def is_on_horizontal_level(
         result = peaks_in_neighboorhood >= min_peaks_number
 
         if result:
-            alert_result.instruments.append(instrument)
+            results.add(instrument)
 
-    return alert_result
+    return results

@@ -12,10 +12,9 @@ import numpy as np
 
 def abnormal_volume(
     candle_type, instruments, number_of_candles, multiplier, token, history
-) -> AlertResult:
+) -> set[str]:
 
-    alert_result = AlertResult(0, [], candle_type, "abnormal_volume")  # why candle_type?
-
+    results = set()
     for instrument in instruments:
 
         relevant_history = np.array([])
@@ -35,6 +34,6 @@ def abnormal_volume(
         result = current_volume / average_volume >= multiplier
 
         if result:
-            alert_result.instruments.append(instrument)
+            results.add(instrument)
 
-    return alert_result
+    return results

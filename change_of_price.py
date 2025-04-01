@@ -12,9 +12,9 @@ TOKEN = os.getenv("TOKEN")
 
 def change_of_price(
     candle_type, instruments, number_of_candles, rate_to_std, token, history
-) -> AlertResult:
+) -> set[str]:
 
-    alert_result = AlertResult(0, [], candle_type, "change_of_price")
+    results = set()
 
     for instrument in instruments:
 
@@ -34,6 +34,6 @@ def change_of_price(
         result = bool(current_price_high / std_price_high > rate_to_std)
 
         if result:
-            alert_result.instruments.append(instrument)
+            results.add(instrument)
 
-    return alert_result
+    return results

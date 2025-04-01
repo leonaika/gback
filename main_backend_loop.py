@@ -2,6 +2,7 @@ from abnormal_volume import abnormal_volume
 import asyncio
 from async_all_candles import get_all_candles
 import argparse
+from backend_response_structure import AlertResult
 from change_of_price import change_of_price
 from check_time_msc import check_time
 import datetime
@@ -35,7 +36,9 @@ def main():
                 if instrument.class_code == "TQBR":
                     all_instruments.append(instrument)
 
-        all_instruments = ["BBG004730N88"]       # если просто потестить, то можешь вот эту строчку юзать вместо предыдщущих
+        all_instruments = [
+            "BBG004730N88"
+        ]  # если просто потестить, то можешь вот эту строчку юзать вместо предыдщущих
         timeframes = ["5min", "15min", "1h", "4h", "1d"]
         history = History(
             all_instruments,
@@ -66,17 +69,17 @@ def main():
         cur = conn.cursor()
 
         cur.execute(
-            """SELECT user_id, alert_id
+            """SELECT alert_name, alert_id
                   FROM alerts
                   ;""",
         )
 
-        users_alerts = cur.fetchall()
+        alerts_name_id = cur.fetchall()
 
         alerts_users_map = {}
 
-        for user, alert in users_alerts:
-            alerts_users_map[alert] = user
+        for alert_name, alert_id in alerts_name_id:
+            alerts_users_map[alert_id] = AlertResult(alert_id, set(), alert_name, False)
 
         cur.execute(
             """SELECT alert_id, high_volume_tf
@@ -102,7 +105,7 @@ def main():
 
         horizontal_level_alerts = cur.fetchall()
 
-        results = {}
+        # results = {}
 
         for abnormal_volume_alert in abnormal_volume_alerts:
             result = abnormal_volume(
@@ -113,8 +116,11 @@ def main():
                 TOKEN,
                 history,
             )
-            if result:
-                results[abnormal_volume_alert[0]] = result
+            if alerts_users_map[abnormal_volume_alert[0]].seen:
+                alerts_users_map[abnormal_volume_alert[0]].instruments &= result
+            else:
+                alerts_users_map[abnormal_volume_alert[0]].instruments = result
+                alerts_users_map[abnormal_volume_alert[0]].seen = True
 
         for price_change_alert in price_change_alerts:
             result = change_of_price(
@@ -125,8 +131,11 @@ def main():
                 TOKEN,
                 history,
             )
-            if result:
-                results[price_change_alert[0]] = result
+            if alerts_users_map[abnormal_volume_alert[0]].seen:
+                alerts_users_map[abnormal_volume_alert[0]].instruments &= result
+            else:
+                alerts_users_map[abnormal_volume_alert[0]].instruments = result
+                alerts_users_map[abnormal_volume_alert[0]].seen = True
 
         for horizontal_level_alert in horizontal_level_alerts:
             result = is_on_horizontal_level(
@@ -138,11 +147,14 @@ def main():
                 TOKEN,
                 history,
             )
-            if result:
-                results[horizontal_level_alert[0]] = result
+            if alerts_users_map[abnormal_volume_alert[0]].seen:
+                alerts_users_map[abnormal_volume_alert[0]].instruments &= result
+            else:
+                alerts_users_map[abnormal_volume_alert[0]].instruments = result
+                alerts_users_map[abnormal_volume_alert[0]].seen = True
 
-        for alert in results:
-            results[alert].user_id = alerts_users_map[alert]
+        # for alert in results:
+        #     results[alert].user_id = alerts_users_map[alert]
 
         for instument in all_instruments:
             for timeframe in timeframes:
@@ -161,14 +173,13 @@ def main():
                     candle[7],
                 )
 
-        for alert in results:
-            result = results[alert]
+        for alert in alerts_users_map:
+            result = alerts_users_map[alert]
             if len(result.instruments):
                 url = "http://0.0.0.0:8000/send-message/"
                 data = {
-                    "user_id": result.user_id,
-                    "instruments": result.instruments,
-                    "timeframe": result.timeframe,
+                    "alert_id": result.alert_id,
+                    "instruments": list(result.instruments),
                     "alert_name": result.alert_name,
                 }
                 response = requests.post(url, json=data)
