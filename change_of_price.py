@@ -29,11 +29,13 @@ def change_of_price(
 
         current_price_high = asyncio.run(
             get_all_candles(instrument, 0, candle_type, True, token)
-        )[0][6]
+        )
 
-        result = bool(current_price_high / std_price_high > rate_to_std)
+        if current_price_high:
+            current_price_high = current_price_high[0][6]
+            result = bool(current_price_high / std_price_high > rate_to_std)
 
-        if result:
-            results.add(instrument)
+            if result:
+                results.add(instrument)
 
     return results

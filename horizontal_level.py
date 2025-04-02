@@ -57,7 +57,12 @@ def is_on_horizontal_level(
 
         current_price_close = asyncio.run(
             get_all_candles(instrument, 0, candle_type, True, token)
-        )[0][5]
+        )
+
+        if not current_price_close:
+            continue
+
+        current_price_close = current_price_close[0][5]
 
         peaks = find_peaks(relevant_history, num_of_neighbours)
 

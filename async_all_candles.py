@@ -39,19 +39,19 @@ async def get_all_candles(
         delta = 0
         if candle_type == "5min":
             candle_interval = CandleInterval.CANDLE_INTERVAL_5_MIN
-            delta = 5
+            delta = 5 + 1
         elif candle_type == "15min":
             candle_interval = CandleInterval.CANDLE_INTERVAL_15_MIN
-            delta = 15
+            delta = 15 + 1
         elif candle_type == "1h":
             candle_interval = CandleInterval.CANDLE_INTERVAL_HOUR
-            delta = 60
+            delta = 60 + 1
         elif candle_type == "4h":
             candle_interval = CandleInterval.CANDLE_INTERVAL_4_HOUR
-            delta = 240
+            delta = 240 + 1
         elif candle_type == "1d":
             candle_interval = CandleInterval.CANDLE_INTERVAL_DAY
-            delta = 1440
+            delta = 1440 + 1
 
         if last_candle_only:
             timeframe = delta

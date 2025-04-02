@@ -27,13 +27,13 @@ def abnormal_volume(
 
         current_volume = asyncio.run(
             get_all_candles(instrument, 0, candle_type, True, token)
-        )[0][
-            3
-        ]  # check that len(candles) > 0
+        )
 
-        result = current_volume / average_volume >= multiplier
+        if current_volume:
+            current_volume = current_volume[0][3]
+            result = current_volume / average_volume >= multiplier
 
-        if result:
-            results.add(instrument)
+            if result:
+                results.add(instrument)
 
     return results

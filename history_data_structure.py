@@ -6,7 +6,6 @@ from tinkoff.invest import Client, AsyncClient, CandleInterval
 from tqdm import tqdm
 
 
-
 HOST = os.getenv("HOST")
 TOKEN = os.getenv("TOKEN")
 DATABASE = os.getenv("DATABASE")
@@ -52,15 +51,15 @@ class History:
         time_line = 0
 
         if candle_timeframe == "5min":
-            time_line = 5 * 200
+            time_line = 5 * 300
         elif candle_timeframe == "15min":
             time_line = 15 * 200
         elif candle_timeframe == "1h":
-            time_line = 60 * 200
+            time_line = 60 * 100
         elif candle_timeframe == "4h":
-            time_line = 240 * 200
+            time_line = 240 * 100
         elif candle_timeframe == "1d":
-            time_line = 1440 * 200
+            time_line = 1440 * 100
 
         a = asyncio.run(
             get_all_candles(instrument, time_line, candle_timeframe, False, self.token)
@@ -92,7 +91,6 @@ class History:
                 )
 
                 self.last_candle[instrument][candle_timeframe]["date_time"] = (
-
                     self.history[instrument][candle_timeframe]["date_time"][-1]
                 )
 
