@@ -15,6 +15,8 @@ import time
 from tinkoff.invest import Client, AsyncClient, CandleInterval
 import zoneinfo
 from instruments_blacklist import instruments_blacklist
+import json
+from history import get_history, update_history
 
 
 HOST = os.getenv("HOST")
@@ -24,38 +26,34 @@ DB_USER = os.getenv("DB_USER")
 PASSWORD = os.getenv("PASSWORD")
 
 
-def main():
+async def main():
 
     if (
-        check_time()
-    ):  # проверяю, что биржа работает через время работы мск биржи, feel free to change
+        # check_time()
+        True
+    ):
 
         all_instruments = []
         with Client(TOKEN) as client:
             r = client.instruments.shares()
-            c = 0
             for instrument in r.instruments:
                 if (instrument.class_code == "TQBR") and (instrument.figi not in instruments_blacklist):
                     all_instruments.append(instrument.figi)
 
         # all_instruments = [
-        #     "BBG004730N88"
-        # ]  # если просто потестить, то можешь вот эту строчку юзать вместо предыдщущих
+        #     "BBG004730N88",
+        #     "BBG004731032"
+        # ]  # test
+
         timeframes = ["5min", "15min", "1h", "4h", "1d"]
-        history = History(
-            all_instruments,
-            timeframes,
-            TOKEN,
-            DATABASE,
-            DB_USER,
-            PASSWORD,
-            HOST,
-        )
-        history.create_history()
+        hist_dfs = get_history(all_instruments)
+        history = dict(zip(timeframes, hist_dfs))
 
     while True:
 
-        if not check_time():
+        if not check_time() and False:
+            print('waiting for trading session')
+            time.sleep(60 * 5)
             continue
         
         print('sleeping...')
@@ -81,6 +79,7 @@ def main():
 
         alerts_users_map = {}
 
+        t0 = time.time()
         for alert_name, alert_id in alerts_name_id:
             alerts_users_map[alert_id] = AlertResult(alert_id, set(), alert_name, False)
 
@@ -108,76 +107,45 @@ def main():
 
         horizontal_level_alerts = cur.fetchall()
 
-        # results = {}
+        print('Get all alerts data:', round(time.time() - t0, 2))
 
+
+        t0 = time.time()
         for abnormal_volume_alert in abnormal_volume_alerts:
-            result = abnormal_volume(
-                abnormal_volume_alert[1],
-                all_instruments,
-                30,
-                2,
-                TOKEN,
-                history,
-            )
+            result = abnormal_volume(abnormal_volume_alert, history)
             if alerts_users_map[abnormal_volume_alert[0]].seen:
                 alerts_users_map[abnormal_volume_alert[0]].instruments &= result
             else:
                 alerts_users_map[abnormal_volume_alert[0]].instruments = result
                 alerts_users_map[abnormal_volume_alert[0]].seen = True
+        print('Filter high volume:', round(time.time() - t0, 2))
 
+        t0 = time.time()
         for price_change_alert in price_change_alerts:
-            result = change_of_price(
-                price_change_alert[1],
-                all_instruments,
-                30,
-                price_change_alert[2],
-                TOKEN,
-                history,
-            )
+            result = change_of_price(price_change_alert, history)
             if alerts_users_map[abnormal_volume_alert[0]].seen:
                 alerts_users_map[abnormal_volume_alert[0]].instruments &= result
             else:
                 alerts_users_map[abnormal_volume_alert[0]].instruments = result
                 alerts_users_map[abnormal_volume_alert[0]].seen = True
+        print('Filter high volatility:', round(time.time() - t0, 2))
 
+        t0 = time.time()
         for horizontal_level_alert in horizontal_level_alerts:
-            result = is_on_horizontal_level(
-                horizontal_level_alert[1],
-                all_instruments,
-                horizontal_level_alert[2],
-                3,  # num_of_neigbours (one side)
-                5,  # price radius (percent)
-                TOKEN,
-                history,
-            )
+            result = is_on_horizontal_level(horizontal_level_alert, history)
             if alerts_users_map[abnormal_volume_alert[0]].seen:
                 alerts_users_map[abnormal_volume_alert[0]].instruments &= result
             else:
                 alerts_users_map[abnormal_volume_alert[0]].instruments = result
                 alerts_users_map[abnormal_volume_alert[0]].seen = True
+        print('Filter horizontal level:', round(time.time() - t0, 2))
 
-        # for alert in results:
-        #     results[alert].user_id = alerts_users_map[alert]
+        t0 = time.time()
+        history = await update_history(history)
+        print('Update history:', round(time.time() - t0, 2))
 
-        for instument in all_instruments:
-            for timeframe in timeframes:
-                candle = asyncio.run(
-                    get_all_candles(instument, 0, timeframe, True, TOKEN)
-                )[0]
-
-                history.update_history(
-                    candle[2],
-                    instument,
-                    timeframe,
-                    candle[3],
-                    candle[4],
-                    candle[5],
-                    candle[6],
-                    candle[7],
-                )
-
+        t0 = time.time()
         for alert in alerts_users_map:
-            print(alerts_users_map[alert])
             result = alerts_users_map[alert]
             if len(result.instruments):
                 url = "http://0.0.0.0:8080/send-message/"
@@ -187,7 +155,8 @@ def main():
                     "alert_name": result.alert_name,
                 }
                 response = requests.post(url, json=data)
+        print('Send alerts to front:', round(time.time() - t0, 2))
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

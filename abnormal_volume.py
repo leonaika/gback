@@ -10,30 +10,19 @@ import typing
 import numpy as np
 
 
-def abnormal_volume(
-    candle_type, instruments, number_of_candles, multiplier, token, history
-) -> set[str]:
+def abnormal_volume(alert, history):
+    threshold = 0.6
+    tf = alert[1]
+    df = history[tf].sort_values(["instrument_id", "start_time"])
 
-    results = set()
-    for instrument in instruments:
+    df["mean_volume_30"] = (
+        df.groupby("instrument_id")["volume"]
+        .transform(lambda x: x.shift(1).rolling(30).mean())
+    )
 
-        relevant_history = np.array([])
-        if len(history[instrument][candle_type]):
+    latest = df.groupby("instrument_id").tail(1)
+    latest = latest[latest["mean_volume_30"].notnull() & (latest["mean_volume_30"] > 0)]
+    latest["volume_ratio"] = latest["volume"] / latest["mean_volume_30"]
+    result = latest[latest["volume_ratio"] > threshold]["instrument_id"]
 
-            relevant_history = history[instrument][candle_type]["volume"][
-                -number_of_candles:
-            ]
-        average_volume = np.mean(relevant_history)
-
-        current_volume = asyncio.run(
-            get_all_candles(instrument, 0, candle_type, True, token)
-        )
-
-        if current_volume:
-            current_volume = current_volume[0][3]
-            result = current_volume / average_volume >= multiplier
-
-            if result:
-                results.add(instrument)
-
-    return results
+    return set(result)

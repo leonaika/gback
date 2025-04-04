@@ -4,6 +4,7 @@ import numpy as np
 import os
 from tinkoff.invest import Client, AsyncClient, CandleInterval
 from tqdm import tqdm
+import pandas as pd
 
 
 HOST = os.getenv("HOST")
@@ -81,7 +82,6 @@ class History:
     def create_history(self) -> None:
 
         for instrument in tqdm(self.instruments):
-            tqdm.write(instrument)
 
             for candle_timeframe in self.candle_timeframes:
 
@@ -113,6 +113,8 @@ class History:
                 self.last_candle[instrument][candle_timeframe]["low_price"] = (
                     self.history[instrument][candle_timeframe]["low_price"][-1]
                 )
+        for candle_timeframe in self.candle_timeframes:
+            self.history_5min = pd.DataFrame(self.history)
 
     def update_history(
         self,

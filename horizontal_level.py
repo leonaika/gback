@@ -5,79 +5,43 @@ from backend_response_structure import AlertResult
 from history_data_structure import History
 import numpy as np
 
+def detect_peaks(prices):
+    peaks = np.zeros(len(prices), dtype=int)
 
-def find_peaks(candles, num_of_neighbours):
+    for i in range(2, len(prices) - 2):
+        window = prices[i - 2:i + 3]
+        center = prices[i]
 
-    peaks_indices = []
+        if center == max(window) and center > window[1] and center > window[3]:
+            peaks[i] = 1  # Local max
+        elif center == min(window) and center < window[1] and center < window[3]:
+            peaks[i] = -1  # Local min
 
-    for candle_ind in range(num_of_neighbours, len(candles) - num_of_neighbours):
+    return peaks
 
-        if_lower = True
+def is_on_horizontal_level(alert, history):
+    tf = alert[1]
+    radius_pct = 0.5 * 0.01
+    required_peaks = alert[2]
 
-        for left_neighbour_ind in range(
-            candle_ind - 1, candle_ind - num_of_neighbours - 1, -1
-        ):
+    df = history[tf].sort_values(["instrument_id", "start_time"])
+    df = df.groupby("instrument_id").tail(100).reset_index(drop=True)
 
-            if candles[left_neighbour_ind] >= candles[candle_ind]:
-                if_lower = False
-                break
+    result = set()
 
-        for right_neighbour_ind in range(
-            candle_ind + 1, candle_ind + num_of_neighbours + 1
-        ):
+    for instrument_id, group in df.groupby("instrument_id"):
+        closes = group["close"].values
 
-            if candles[right_neighbour_ind] >= candles[candle_ind]:
-                if_lower = False
-                break
+        peaks = detect_peaks(closes)
 
-        if if_lower:
-            peaks_indices.append(candles[candle_ind])
+        last_close = closes[-1]
+        lower_bound = last_close * (1 - radius_pct)
+        upper_bound = last_close * (1 + radius_pct)
 
-    return peaks_indices
+        max_mask = (peaks == 1) & (closes >= lower_bound) & (closes <= upper_bound)
+        min_mask = (peaks == -1) & (closes >= lower_bound) & (closes <= upper_bound)
 
+        if max_mask.sum() >= required_peaks or min_mask.sum() >= required_peaks:
+            result.add(instrument_id)
 
-def is_on_horizontal_level(
-    candle_type,
-    instruments,
-    min_peaks_number,
-    num_of_neighbours,
-    price_radius,
-    token,
-    history,
-) -> set[str]:
-
-    results = set()
-
-    for instrument in instruments:
-
-        relevant_history = np.array([])
-        if len(history[instrument][candle_type]):
-
-            relevant_history = history[instrument][candle_type]["close_price"][-50:]
-
-        current_price_close = asyncio.run(
-            get_all_candles(instrument, 0, candle_type, True, token)
-        )
-
-        if not current_price_close:
-            continue
-
-        current_price_close = current_price_close[0][5]
-
-        peaks = find_peaks(relevant_history, num_of_neighbours)
-
-        lower_bound, upper_bound = (
-            current_price_close - current_price_close * (1 + price_radius / 100),
-            current_price_close + price_radius * (1 - price_radius / 100),
-        )
-
-        peaks_in_neighboorhood = sum(
-            1 if lower_bound <= peak <= upper_bound else 0 for peak in peaks
-        )
-
-        result = peaks_in_neighboorhood >= min_peaks_number
-
-        if result:
-            results.add(instrument)
-
-    return results
+    return result

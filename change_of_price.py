@@ -7,35 +7,21 @@ import os
 from history_data_structure import History
 
 
-TOKEN = os.getenv("TOKEN")
+def change_of_price(alert, history):
+    tf = alert[1]
+    threshold = alert[2]
+    df = history[tf].sort_values(["instrument_id", "start_time"])
 
+    df["return"] = df.groupby("instrument_id")["close"].pct_change()
 
-def change_of_price(
-    candle_type, instruments, number_of_candles, rate_to_std, token, history
-) -> set[str]:
+    df["std_return_30"] = (
+        df.groupby("instrument_id")["return"]
+        .transform(lambda x: x.shift(1).rolling(30).std())
+    )
 
-    results = set()
+    latest = df.groupby("instrument_id").tail(1)
+    latest = latest[latest["std_return_30"].notnull() & (latest["std_return_30"] > 0)]
+    latest["volatility_ratio"] = latest["return"].abs() / latest["std_return_30"]
+    result = latest[latest["volatility_ratio"] > threshold]["instrument_id"]
 
-    for instrument in instruments:
-
-        relevant_history = np.array([])
-        if len(history[instrument][candle_type]):
-
-            relevant_history = history[instrument][candle_type]["high_price"][
-                -number_of_candles:
-            ]
-
-        std_price_high = np.std(relevant_history)
-
-        current_price_high = asyncio.run(
-            get_all_candles(instrument, 0, candle_type, True, token)
-        )
-
-        if current_price_high:
-            current_price_high = current_price_high[0][6]
-            result = bool(current_price_high / std_price_high > rate_to_std)
-
-            if result:
-                results.add(instrument)
-
-    return results
+    return set(result)
