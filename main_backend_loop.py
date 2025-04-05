@@ -154,7 +154,10 @@ async def main():
                     "instruments": list(result.instruments),
                     "alert_name": result.alert_name,
                 }
-                response = requests.post(url, json=data)
+                try:
+                    response = requests.post(url, json=data)
+                except:
+                    print("Failed to send alerts to front")
         print('Send alerts to front:', round(time.time() - t0, 2))
 
 
