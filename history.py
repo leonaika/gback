@@ -1,17 +1,17 @@
-import pandas as pd
-from tinkoff.invest import Client, CandleInterval
-from tinkoff.invest.utils import now
-from datetime import timedelta, datetime, timezone
-import pytz
 import os
+import asyncio
+import pandas as pd
+from datetime import timedelta, datetime, timezone
+from tinkoff.invest import Client, CandleInterval, AsyncClient
+from tinkoff.invest.utils import now
 from dotenv import load_dotenv
 from tqdm import tqdm
-from tinkoff.invest import AsyncClient
+from time import time
 
 load_dotenv()
+TOKEN = os.getenv("TOKEN")
 
-TOKEN = os.getenv('TOKEN')
-
+# Timeframe settings
 HISTORY_LIMIT_DAYS = {
     "5min": 1,
     "15min": 3,
@@ -32,24 +32,29 @@ TIMEFRAME_MAP = {
     "5min": (CandleInterval.CANDLE_INTERVAL_5_MIN, timedelta(minutes=5)),
     "15min": (CandleInterval.CANDLE_INTERVAL_15_MIN, timedelta(minutes=15)),
     "1h": (CandleInterval.CANDLE_INTERVAL_HOUR, timedelta(hours=1)),
-    "4h": (CandleInterval.CANDLE_INTERVAL_HOUR, timedelta(hours=4)),
+    "4h": (CandleInterval.CANDLE_INTERVAL_4_HOUR, timedelta(hours=4)),
     "1d": (CandleInterval.CANDLE_INTERVAL_DAY, timedelta(days=1)),
 }
 
+# Shared state
+history = {}  # stores latest history
+history_lock = None
 last_update_time = None
 
-def get_history(instruments):
-    timeframes = ["5min", "15min", "1h", "4h", "1d"]
+async def init_history_globals():
+    global history_lock
+    history_lock = asyncio.Lock()
 
+# Sync function to fetch full initial history
+def get_history(instruments):
     dfs = {}
+    timeframes = list(HISTORY_LIMIT_DAYS.keys())
 
     with Client(TOKEN) as client:
         for tf in tqdm(timeframes):
             interval = INTERVAL_MAPPING[tf]
-            days_back = HISTORY_LIMIT_DAYS[tf]
             end_time = now()
-            start_time = end_time - timedelta(days=days_back)
-
+            start_time = end_time - timedelta(days=HISTORY_LIMIT_DAYS[tf])
             records = []
 
             for instrument_id in instruments:
@@ -63,7 +68,7 @@ def get_history(instruments):
                 for candle in candles:
                     records.append({
                         "instrument_id": instrument_id,
-                        "start_time": candle.time,
+                        "start_time": candle.time.replace(tzinfo=timezone.utc),
                         "open": candle.open.units + candle.open.nano / 1e9,
                         "high": candle.high.units + candle.high.nano / 1e9,
                         "low": candle.low.units + candle.low.nano / 1e9,
@@ -77,15 +82,11 @@ def get_history(instruments):
     return dfs["5min"], dfs["15min"], dfs["1h"], dfs["4h"], dfs["1d"]
 
 
+# Async update function — updates existing history in memory
 async def update_history(history: dict):
+    t0 = time()
     global last_update_time
-    tz = timezone.utc
-    now = datetime.now(tz)
-
-    if last_update_time and now.minute // 5 == last_update_time.minute // 5:
-        return history
-    
-    last_update_time = now
+    now_utc = datetime.now(timezone.utc)
 
     async with AsyncClient(TOKEN) as client:
         for tf, df in history.items():
@@ -97,10 +98,10 @@ async def update_history(history: dict):
                 latest_time = group["start_time"].max()
 
                 start_time = latest_time + step
-                end_time = now
+                end_time = now_utc
 
                 if start_time >= end_time:
-                    continue  # nothing to update
+                    continue  # up to date
 
                 response = await client.market_data.get_candles(
                     figi=instrument_id,
@@ -114,7 +115,7 @@ async def update_history(history: dict):
                 for candle in candles:
                     new_records.append({
                         "instrument_id": instrument_id,
-                        "start_time": candle.time.astimezone(tz),
+                        "start_time": candle.time.replace(tzinfo=timezone.utc),
                         "open": candle.open.units + candle.open.nano / 1e9,
                         "high": candle.high.units + candle.high.nano / 1e9,
                         "low": candle.low.units + candle.low.nano / 1e9,
@@ -130,5 +131,22 @@ async def update_history(history: dict):
                 updated_df = pd.concat([df] + updated_frames).drop_duplicates(
                     subset=["instrument_id", "start_time"]
                 ).sort_values(["instrument_id", "start_time"])
-                history[tf] = updated_df.reset_index(drop=True)
+                async with history_lock:
+                    history[tf] = updated_df.reset_index(drop=True)
+
+    print("Update history:", round(time() - t0, 2))
     return history
+
+
+# Background updater loop
+async def periodic_history_updater():
+    global history
+
+    while True:
+        try:
+            updated = await update_history(history)
+            history = updated
+            await asyncio.sleep(5)
+        except:
+            print('API cooldown')
+            await asyncio.sleep(30)

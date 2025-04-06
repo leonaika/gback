@@ -11,7 +11,7 @@ import numpy as np
 
 
 def abnormal_volume(alert, history):
-    threshold = 0.6
+    threshold = 2.5
     tf = alert[1]
     df = history[tf].sort_values(["instrument_id", "start_time"])
 
