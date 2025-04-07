@@ -1,6 +1,6 @@
-from abnormal_volume import abnormal_volume
+from filters.high_volume import abnormal_volume
 import asyncio
-from change_of_price import change_of_price
+from filters.high_volatility import change_of_price
 from check_time_msc import check_time
 import time
 from tinkoff.invest import Client
@@ -8,9 +8,9 @@ import requests
 import os
 import pg8000
 from instruments_blacklist import instruments_blacklist
-import history
-from backend_response_structure import AlertResult
-from horizontal_level import is_on_horizontal_level
+import history.history_getter as history_getter
+from response.backend_response_structure import AlertResult
+from filters.horizontal_level import is_on_horizontal_level
 
 HOST = os.getenv("HOST")
 TOKEN = os.getenv("TOKEN")
@@ -19,7 +19,7 @@ DB_USER = os.getenv("DB_USER")
 PASSWORD = os.getenv("PASSWORD")
 
 async def main():
-    await history.init_history_globals()
+    await history_getter.init_history_globals()
 
     if True:
         # Fetch all instruments (this can be done here or in a separate task)
@@ -36,15 +36,15 @@ async def main():
         # ]  # test
 
         timeframes = ["5min", "15min", "1h", "4h", "1d"]
-        hist_dfs = history.get_history(all_instruments)
+        hist_dfs = history_getter.get_history(all_instruments)
         local_history = dict(zip(timeframes, hist_dfs))
 
-        async with history.history_lock:
-            history.history.clear()
-            history.history.update(local_history)
+        async with history_getter.history_lock:
+            history_getter.history.clear()
+            history_getter.history.update(local_history)
 
     # Start the background task for updating history
-    asyncio.create_task(history.periodic_history_updater())
+    asyncio.create_task(history_getter.periodic_history_updater())
 
     while True:
         print('sleeping...')
@@ -81,8 +81,8 @@ async def main():
         print('Get all alerts data:', round(time.time() - t0, 2))
 
         # Use the imported global history, locked for thread safety
-        async with history.history_lock:
-            local_history = history.history.copy()  # Make a copy of the current history
+        async with history_getter.history_lock:
+            local_history = history_getter.history.copy()  # Make a copy of the current history
 
         # Process each type of alert (abnormal volume, price change, horizontal level)
         t0 = time.time()

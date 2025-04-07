@@ -84,12 +84,12 @@ def get_history(instruments):
 
 # Async update function — updates existing history in memory
 async def update_history(history: dict):
-    t0 = time()
     global last_update_time
     now_utc = datetime.now(timezone.utc)
 
     async with AsyncClient(TOKEN) as client:
         for tf, df in history.items():
+            t0 = time()
             candle_interval, step = TIMEFRAME_MAP[tf]
             updated_frames = []
 
@@ -133,8 +133,7 @@ async def update_history(history: dict):
                 ).sort_values(["instrument_id", "start_time"])
                 async with history_lock:
                     history[tf] = updated_df.reset_index(drop=True)
-
-    print("Update history:", round(time() - t0, 2))
+            print(f"------------Update history {tf}:", round(time() - t0, 2))
     return history
 
 

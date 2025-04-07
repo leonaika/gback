@@ -1,9 +1,5 @@
-import asyncio
-from async_all_candles import get_all_candles
-import argparse
-from backend_response_structure import AlertResult
-from history_data_structure import History
 import numpy as np
+
 
 def detect_peaks(prices):
     peaks = np.zeros(len(prices), dtype=int)

@@ -1,15 +1,3 @@
-import asyncio
-from async_all_candles import get_all_candles
-import argparse
-from backend_response_structure import AlertResult
-import os
-from tinkoff.invest import AsyncClient, CandleInterval
-from tinkoff.invest.schemas import CandleSource
-from history_data_structure import History
-import typing
-import numpy as np
-
-
 def abnormal_volume(alert, history):
     threshold = 2.5
     tf = alert[1]

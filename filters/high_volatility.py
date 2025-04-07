@@ -1,12 +1,3 @@
-import asyncio
-from async_all_candles import get_all_candles
-import argparse
-from backend_response_structure import AlertResult
-import numpy as np
-import os
-from history_data_structure import History
-
-
 def change_of_price(alert, history):
     tf = alert[1]
     threshold = alert[2]
