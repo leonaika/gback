@@ -18,6 +18,7 @@ DATABASE = os.getenv("DATABASE")
 DB_USER = os.getenv("DB_USER")
 PASSWORD = os.getenv("PASSWORD")
 
+
 async def main():
     await history.init_history_globals()
 
@@ -27,9 +28,11 @@ async def main():
         with Client(TOKEN) as client:
             r = client.instruments.shares()
             for instrument in r.instruments:
-                if (instrument.class_code == "TQBR") and (instrument.figi not in instruments_blacklist):
+                if (instrument.class_code == "TQBR") and (
+                    instrument.figi not in instruments_blacklist
+                ):
                     all_instruments.append(instrument.figi)
-        
+
         # all_instruments = [
         #     "BBG004730N88",
         #     "BBG004731032"
@@ -47,7 +50,7 @@ async def main():
     asyncio.create_task(history.periodic_history_updater())
 
     while True:
-        print('sleeping...')
+        print("sleeping...")
         await asyncio.sleep(10)
 
         # Database connection setup
@@ -66,19 +69,23 @@ async def main():
         alerts_users_map = {}
 
         t0 = time.time()
-        for alert_name, alert_id in alerts_name_id:
+        for alert_id, alert_name in alerts_name_id:
             alerts_users_map[alert_id] = AlertResult(alert_id, set(), alert_name, False)
 
         cur.execute("""SELECT alert_id, high_volume_tf FROM filter_high_volume;""")
         abnormal_volume_alerts = cur.fetchall()
 
-        cur.execute("""SELECT alert_id, high_volatility_tf, high_volatility_ret_std FROM filter_high_volatility;""")
+        cur.execute(
+            """SELECT alert_id, high_volatility_tf, high_volatility_ret_std FROM filter_high_volatility;"""
+        )
         price_change_alerts = cur.fetchall()
 
-        cur.execute("""SELECT alert_id, horizontal_level_tf, horizontal_level_peaks FROM filter_horizontal_level;""")
+        cur.execute(
+            """SELECT alert_id, horizontal_level_tf, horizontal_level_peaks FROM filter_horizontal_level;"""
+        )
         horizontal_level_alerts = cur.fetchall()
 
-        print('Get all alerts data:', round(time.time() - t0, 2))
+        print("Get all alerts data:", round(time.time() - t0, 2))
 
         # Use the imported global history, locked for thread safety
         async with history.history_lock:
@@ -94,7 +101,7 @@ async def main():
             else:
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
-        print('Filter high volume:', round(time.time() - t0, 2))
+        print("Filter high volume:", round(time.time() - t0, 2))
 
         t0 = time.time()
         for price_change_alert in price_change_alerts:
@@ -105,7 +112,7 @@ async def main():
             else:
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
-        print('Filter high volatility:', round(time.time() - t0, 2))
+        print("Filter high volatility:", round(time.time() - t0, 2))
 
         t0 = time.time()
         for horizontal_level_alert in horizontal_level_alerts:
@@ -116,7 +123,7 @@ async def main():
             else:
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
-        print('Filter horizontal level:', round(time.time() - t0, 2))
+        print("Filter horizontal level:", round(time.time() - t0, 2))
 
         t0 = time.time()
         # Send alerts to front
@@ -133,7 +140,8 @@ async def main():
                     response = requests.post(url, json=data)
                 except:
                     print("Failed to send alerts to front")
-        print('Send alerts to front:', round(time.time() - t0, 2))
+        print("Send alerts to front:", round(time.time() - t0, 2))
+
 
 if __name__ == "__main__":
     asyncio.run(main())
