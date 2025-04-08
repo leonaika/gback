@@ -64,7 +64,7 @@ async def main():
 
         cur = conn.cursor()
 
-        cur.execute("""SELECT alert_name, alert_id FROM alerts;""")
+        cur.execute("""SELECT alert_id, alert_name FROM alerts;""")
         alerts_name_id = cur.fetchall()
         alerts_users_map = {}
 

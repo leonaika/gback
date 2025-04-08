@@ -64,7 +64,7 @@ def get_history(instruments):
                     to=end_time,
                     interval=interval
                 ).candles
-                sleep(2)
+                sleep(0.5)
 
                 for candle in candles:
                     records.append({
