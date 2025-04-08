@@ -6,7 +6,7 @@ from tinkoff.invest import Client, CandleInterval, AsyncClient
 from tinkoff.invest.utils import now
 from dotenv import load_dotenv
 from tqdm import tqdm
-from time import time
+from time import time, sleep
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -64,6 +64,7 @@ def get_history(instruments):
                     to=end_time,
                     interval=interval
                 ).candles
+                sleep(2)
 
                 for candle in candles:
                     records.append({
