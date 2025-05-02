@@ -49,8 +49,8 @@ async def main():
     # Start the background task for updating history
     asyncio.create_task(history_getter.periodic_history_updater())
 
+    print('running infinite loop')
     while True:
-        print("sleeping...")
         await asyncio.sleep(10)
 
         # Database connection setup
@@ -85,8 +85,6 @@ async def main():
         )
         horizontal_level_alerts = cur.fetchall()
 
-        print("Get all alerts data:", round(time.time() - t0, 2))
-
         # Use the imported global history, locked for thread safety
         async with history_getter.history_lock:
             local_history = history_getter.history.copy()  # Make a copy of the current history
@@ -101,7 +99,6 @@ async def main():
             else:
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
-        print("Filter high volume:", round(time.time() - t0, 2))
 
         t0 = time.time()
         for price_change_alert in price_change_alerts:
@@ -112,7 +109,6 @@ async def main():
             else:
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
-        print("Filter high volatility:", round(time.time() - t0, 2))
 
         t0 = time.time()
         for horizontal_level_alert in horizontal_level_alerts:
@@ -123,7 +119,6 @@ async def main():
             else:
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
-        print("Filter horizontal level:", round(time.time() - t0, 2))
 
         t0 = time.time()
         # Send alerts to front
@@ -140,7 +135,6 @@ async def main():
                     response = requests.post(url, json=data)
                 except:
                     print("Failed to send alerts to front")
-        print("Send alerts to front:", round(time.time() - t0, 2))
 
 
 if __name__ == "__main__":

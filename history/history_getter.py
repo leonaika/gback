@@ -134,7 +134,6 @@ async def update_history(history: dict):
                 ).sort_values(["instrument_id", "start_time"])
                 async with history_lock:
                     history[tf] = updated_df.reset_index(drop=True)
-            print(f"------------Update history {tf}:", round(time() - t0, 2))
     return history
 
 
@@ -148,5 +147,4 @@ async def periodic_history_updater():
             history = updated
             await asyncio.sleep(5)
         except:
-            print('API cooldown')
             await asyncio.sleep(30)
