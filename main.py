@@ -11,6 +11,7 @@ from instruments_blacklist import instruments_blacklist
 import history.history_getter as history_getter
 from response.backend_response_structure import AlertResult
 from filters.horizontal_level import is_on_horizontal_level
+import alerts_getter as alget
 
 HOST = os.getenv("HOST")
 TOKEN = os.getenv("TOKEN")
@@ -64,34 +65,17 @@ async def main():
 
         cur = conn.cursor()
 
-        cur.execute("""SELECT alert_id, alert_name FROM alerts;""")
-        alerts_name_id = cur.fetchall()
-        alerts_users_map = {}
-
-        t0 = time.time()
-        for alert_id, alert_name in alerts_name_id:
-            alerts_users_map[alert_id] = AlertResult(alert_id, set(), alert_name, False)
-
-        cur.execute("""SELECT alert_id, high_volume_tf FROM filter_high_volume;""")
-        abnormal_volume_alerts = cur.fetchall()
-
-        cur.execute(
-            """SELECT alert_id, high_volatility_tf, high_volatility_ret_std FROM filter_high_volatility;"""
-        )
-        price_change_alerts = cur.fetchall()
-
-        cur.execute(
-            """SELECT alert_id, horizontal_level_tf, horizontal_level_peaks FROM filter_horizontal_level;"""
-        )
-        horizontal_level_alerts = cur.fetchall()
+        alerts_users_map = await alget.get_alerts_users_map(cur)
+        high_volume_alerts = await alget.get_high_volume_alerts(cur)
+        high_volatility_alerts = await alget.get_high_volatility_alerts(cur)
+        horizontal_level_alerts = await alget.get_horizontal_level_alerts(cur)
 
         # Use the imported global history, locked for thread safety
         async with history_getter.history_lock:
             local_history = history_getter.history.copy()  # Make a copy of the current history
 
         # Process each type of alert (abnormal volume, price change, horizontal level)
-        t0 = time.time()
-        for abnormal_volume_alert in abnormal_volume_alerts:
+        for abnormal_volume_alert in high_volume_alerts:
             result = abnormal_volume(abnormal_volume_alert, local_history)
             alert_id = abnormal_volume_alert[0]
             if alerts_users_map[alert_id].seen:
@@ -100,8 +84,7 @@ async def main():
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
 
-        t0 = time.time()
-        for price_change_alert in price_change_alerts:
+        for price_change_alert in high_volatility_alerts:
             result = change_of_price(price_change_alert, local_history)
             alert_id = price_change_alert[0]
             if alerts_users_map[alert_id].seen:
@@ -110,7 +93,6 @@ async def main():
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
 
-        t0 = time.time()
         for horizontal_level_alert in horizontal_level_alerts:
             result = is_on_horizontal_level(horizontal_level_alert, local_history)
             alert_id = horizontal_level_alert[0]
@@ -120,7 +102,6 @@ async def main():
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
 
-        t0 = time.time()
         # Send alerts to front
         for alert in alerts_users_map:
             result = alerts_users_map[alert]
