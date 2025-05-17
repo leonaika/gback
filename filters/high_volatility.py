@@ -1,3 +1,14 @@
+def process_high_volatility_filter(high_volatility_alerts, alerts_users_map, local_history):
+    for alert in high_volatility_alerts:
+        result = change_of_price(alert, local_history)
+        alert_id = alert[0]
+        if alerts_users_map[alert_id].seen:
+            alerts_users_map[alert_id].instruments &= result
+        else:
+            alerts_users_map[alert_id].instruments = result
+            alerts_users_map[alert_id].seen = True
+
+
 def change_of_price(alert, history):
     tf = alert[1]
     threshold = alert[2]

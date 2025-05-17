@@ -1,6 +1,17 @@
 import numpy as np
 
 
+def process_horizontal_level_filter(horizontal_level_alerts, alerts_users_map, local_history):
+    for alert in horizontal_level_alerts:
+        result = is_on_horizontal_level(alert, local_history)
+        alert_id = alert[0]
+        if alerts_users_map[alert_id].seen:
+            alerts_users_map[alert_id].instruments &= result
+        else:
+            alerts_users_map[alert_id].instruments = result
+            alerts_users_map[alert_id].seen = True
+
+
 def detect_peaks(open_prices, close_prices):
     highs = np.maximum(open_prices, close_prices)
     lows = np.minimum(open_prices, close_prices)

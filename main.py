@@ -1,7 +1,6 @@
-from filters.high_volume import abnormal_volume
+from filters.high_volume import process_high_volume_filter
 import asyncio
-from filters.high_volatility import change_of_price
-from check_time_msc import check_time
+from filters.high_volatility import process_high_volatility_filter
 import time
 from tinkoff.invest import Client
 import requests
@@ -9,8 +8,7 @@ import os
 import pg8000
 from instruments_blacklist import instruments_blacklist
 import history.history_getter as history_getter
-from response.backend_response_structure import AlertResult
-from filters.horizontal_level import is_on_horizontal_level
+from filters.horizontal_level import process_horizontal_level_filter
 import alerts_getter as alget
 
 HOST = os.getenv("HOST")
@@ -74,33 +72,9 @@ async def main():
         async with history_getter.history_lock:
             local_history = history_getter.history.copy()  # Make a copy of the current history
 
-        # Process each type of alert (abnormal volume, price change, horizontal level)
-        for abnormal_volume_alert in high_volume_alerts:
-            result = abnormal_volume(abnormal_volume_alert, local_history)
-            alert_id = abnormal_volume_alert[0]
-            if alerts_users_map[alert_id].seen:
-                alerts_users_map[alert_id].instruments &= result
-            else:
-                alerts_users_map[alert_id].instruments = result
-                alerts_users_map[alert_id].seen = True
-
-        for price_change_alert in high_volatility_alerts:
-            result = change_of_price(price_change_alert, local_history)
-            alert_id = price_change_alert[0]
-            if alerts_users_map[alert_id].seen:
-                alerts_users_map[alert_id].instruments &= result
-            else:
-                alerts_users_map[alert_id].instruments = result
-                alerts_users_map[alert_id].seen = True
-
-        for horizontal_level_alert in horizontal_level_alerts:
-            result = is_on_horizontal_level(horizontal_level_alert, local_history)
-            alert_id = horizontal_level_alert[0]
-            if alerts_users_map[alert_id].seen:
-                alerts_users_map[alert_id].instruments &= result
-            else:
-                alerts_users_map[alert_id].instruments = result
-                alerts_users_map[alert_id].seen = True
+        process_high_volume_filter(high_volume_alerts, alerts_users_map, local_history)
+        process_high_volatility_filter(high_volatility_alerts, alerts_users_map, local_history)
+        process_horizontal_level_filter(horizontal_level_alerts, alerts_users_map, local_history)
 
         # Send alerts to front
         for alert in alerts_users_map:
