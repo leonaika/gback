@@ -1,4 +1,4 @@
-def process_high_volatility_filter(high_volatility_alerts, alerts_users_map, local_history):
+def process_high_volatility(high_volatility_alerts, alerts_users_map, local_history):
     for alert in high_volatility_alerts:
         result = change_of_price(alert, local_history)
         alert_id = alert[0]

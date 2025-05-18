@@ -1,4 +1,4 @@
-def process_high_volume_filter(high_volume_alerts, alerts_users_map, local_history):
+def process_high_volume(high_volume_alerts, alerts_users_map, local_history):
     for alert in high_volume_alerts:
             result = abnormal_volume(alert, local_history)
             alert_id = alert[0]

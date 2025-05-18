@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def process_horizontal_level_filter(horizontal_level_alerts, alerts_users_map, local_history):
+def process_horizontal_level(horizontal_level_alerts, alerts_users_map, local_history):
     for alert in horizontal_level_alerts:
         result = is_on_horizontal_level(alert, local_history)
         alert_id = alert[0]

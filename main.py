@@ -1,6 +1,8 @@
-from filters.high_volume import process_high_volume_filter
+from filters.high_volume import process_high_volume
+from filters.high_volatility import process_high_volatility
+from filters.horizontal_level import process_horizontal_level
+from filters.rsi import process_rsi
 import asyncio
-from filters.high_volatility import process_high_volatility_filter
 import time
 from tinkoff.invest import Client
 import requests
@@ -8,7 +10,6 @@ import os
 import pg8000
 from instruments_blacklist import instruments_blacklist
 import history.history_getter as history_getter
-from filters.horizontal_level import process_horizontal_level_filter
 import alerts_getter as alget
 
 HOST = os.getenv("HOST")
@@ -67,14 +68,16 @@ async def main():
         high_volume_alerts = await alget.get_high_volume_alerts(cur)
         high_volatility_alerts = await alget.get_high_volatility_alerts(cur)
         horizontal_level_alerts = await alget.get_horizontal_level_alerts(cur)
+        rsi_alerts = await alget.get_rsi_alerts(cur)
 
         # Use the imported global history, locked for thread safety
         async with history_getter.history_lock:
             local_history = history_getter.history.copy()  # Make a copy of the current history
 
-        process_high_volume_filter(high_volume_alerts, alerts_users_map, local_history)
-        process_high_volatility_filter(high_volatility_alerts, alerts_users_map, local_history)
-        process_horizontal_level_filter(horizontal_level_alerts, alerts_users_map, local_history)
+        process_high_volume(high_volume_alerts, alerts_users_map, local_history)
+        process_high_volatility(high_volatility_alerts, alerts_users_map, local_history)
+        process_horizontal_level(horizontal_level_alerts, alerts_users_map, local_history)
+        process_rsi(rsi_alerts, alerts_users_map, local_history)
 
         # Send alerts to front
         for alert in alerts_users_map:

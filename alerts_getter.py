@@ -28,3 +28,10 @@ async def get_horizontal_level_alerts(cur):
     )
     horizontal_level_alerts = cur.fetchall()
     return horizontal_level_alerts
+
+async def get_rsi_alerts(cur):
+    cur.execute(
+        """SELECT alert_id, rsi_tf, rsi_min, rsi_max FROM filter_rsi;"""
+    )
+    rsi_alerts = cur.fetchall()
+    return rsi_alerts
