@@ -1,4 +1,4 @@
-def process_high_volume(high_volume_alerts, alerts_users_map, local_history):
+def process_high_volume(high_volume_alerts, alerts_users_map, local_history, local_normal_trading_set):
     for alert in high_volume_alerts:
             result = abnormal_volume(alert, local_history)
             alert_id = alert[0]
@@ -7,6 +7,7 @@ def process_high_volume(high_volume_alerts, alerts_users_map, local_history):
             else:
                 alerts_users_map[alert_id].instruments = result
                 alerts_users_map[alert_id].seen = True
+            alerts_users_map[alert_id].instruments &= local_normal_trading_set
 
 
 def abnormal_volume(alert, history):

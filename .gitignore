@@ -166,3 +166,4 @@ cython_debug/
 # my additions
 playground.ipynb
 playground.py
+.DS_Store

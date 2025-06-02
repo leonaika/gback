@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def process_horizontal_level(horizontal_level_alerts, alerts_users_map, local_history):
+def process_horizontal_level(horizontal_level_alerts, alerts_users_map, local_history, local_normal_trading_set):
     for alert in horizontal_level_alerts:
         result = is_on_horizontal_level(alert, local_history)
         alert_id = alert[0]
@@ -10,6 +10,7 @@ def process_horizontal_level(horizontal_level_alerts, alerts_users_map, local_hi
         else:
             alerts_users_map[alert_id].instruments = result
             alerts_users_map[alert_id].seen = True
+        alerts_users_map[alert_id].instruments &= local_normal_trading_set
 
 
 def detect_peaks(open_prices, close_prices):
