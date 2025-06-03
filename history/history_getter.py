@@ -98,11 +98,8 @@ async def update_history(history: dict):
                 group = group.sort_values("start_time")
                 latest_time = group["start_time"].max()
 
-                start_time = latest_time + step
+                start_time = latest_time
                 end_time = now_utc
-
-                if start_time >= end_time:
-                    continue  # up to date
 
                 response = await client.market_data.get_candles(
                     figi=instrument_id,
@@ -130,7 +127,7 @@ async def update_history(history: dict):
 
             if updated_frames:
                 updated_df = pd.concat([df] + updated_frames).drop_duplicates(
-                    subset=["instrument_id", "start_time"]
+                    subset=["instrument_id", "start_time"], keep='last'
                 ).sort_values(["instrument_id", "start_time"])
                 async with history_lock:
                     history[tf] = updated_df.reset_index(drop=True)
