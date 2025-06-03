@@ -4,7 +4,6 @@ from tinkoff.invest.utils import now
 
 def get_local_delta(cur, conn, token, instruments, time_from, time_to):
 
-    realized_delta = 0
     with Client(token) as client:
 
         for instrument_id in instruments:
