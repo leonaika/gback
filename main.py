@@ -11,6 +11,7 @@ import pg8000
 from instruments_blacklist import instruments_blacklist
 import history.history_getter as history_getter
 import history.trading_status as trading_status
+import filters.delta as delta
 import alerts_getter as alget
 
 HOST = os.getenv("HOST")
@@ -23,6 +24,7 @@ PASSWORD = os.getenv("PASSWORD")
 async def main():
     await history_getter.init_history_globals()
     await trading_status.init_trading_status_globals()
+    await delta.init_delta_globals()
 
     if True:
         # Fetch all instruments (this can be done here or in a separate task)
@@ -47,17 +49,22 @@ async def main():
         async with history_getter.history_lock:
             history_getter.history.clear()
             history_getter.history.update(local_history)
-        
-        local_normal_trading_set = trading_status.get_initial_trading_status(all_instruments)
+
+        local_normal_trading_set = trading_status.get_initial_trading_status(
+            all_instruments
+        )
         async with trading_status.trading_status_lock:
             trading_status.normal_trading_set.clear()
             trading_status.normal_trading_set.update(local_normal_trading_set)
+
+        async with delta.delta_lock:
+            delta.delta_bd_updater(cur, conn, all_instruments)
 
     # Start the background task for updating history and trading status
     asyncio.create_task(history_getter.periodic_history_updater())
     asyncio.create_task(trading_status.periodic_trading_status_updater(all_instruments))
 
-    print('running infinite loop')
+    print("running infinite loop")
     while True:
         await asyncio.sleep(10)
 
@@ -81,14 +88,31 @@ async def main():
         # Use the imported global history, locked for thread safety
         async with history_getter.history_lock:
             local_history = history_getter.history.copy()
-        
+
         async with trading_status.trading_status_lock:
             local_normal_trading_set = trading_status.normal_trading_set.copy()
 
-        process_high_volume(high_volume_alerts, alerts_users_map, local_history, local_normal_trading_set)
-        process_high_volatility(high_volatility_alerts, alerts_users_map, local_history, local_normal_trading_set)
-        process_horizontal_level(horizontal_level_alerts, alerts_users_map, local_history, local_normal_trading_set)
-        process_rsi(rsi_alerts, alerts_users_map, local_history, local_normal_trading_set)
+        process_high_volume(
+            high_volume_alerts,
+            alerts_users_map,
+            local_history,
+            local_normal_trading_set,
+        )
+        process_high_volatility(
+            high_volatility_alerts,
+            alerts_users_map,
+            local_history,
+            local_normal_trading_set,
+        )
+        process_horizontal_level(
+            horizontal_level_alerts,
+            alerts_users_map,
+            local_history,
+            local_normal_trading_set,
+        )
+        process_rsi(
+            rsi_alerts, alerts_users_map, local_history, local_normal_trading_set
+        )
 
         # Send alerts to front
         for alert in alerts_users_map:
