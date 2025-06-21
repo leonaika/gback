@@ -35,3 +35,10 @@ async def get_rsi_alerts(cur):
     )
     rsi_alerts = cur.fetchall()
     return rsi_alerts
+
+async def get_ma_alerts(cur):
+    cur.execute(
+        """SELECT alert_id, ma_tf, ma_type, ma_length FROM filter_ma;"""
+    )
+    ma_alerts = cur.fetchall()
+    return ma_alerts

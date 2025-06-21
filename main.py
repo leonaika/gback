@@ -2,6 +2,7 @@ from filters.high_volume import process_high_volume
 from filters.high_volatility import process_high_volatility
 from filters.horizontal_level import process_horizontal_level
 from filters.rsi import process_rsi
+from filters.ma import process_ma
 import asyncio
 import time
 from tinkoff.invest import Client
@@ -35,10 +36,11 @@ async def main():
                 ):
                     all_instruments.append(instrument.figi)
 
-        # all_instruments = [
-        #     "BBG004730N88",
-        #     "BBG004731032"
-        # ]  # test
+        all_instruments = [
+            "BBG004730N88",
+            "BBG004731032",
+            "BBG004730RP0"
+        ]  # test
 
         timeframes = ["5min", "15min", "1h", "4h", "1d"]
         hist_dfs = history_getter.get_history(all_instruments)
@@ -77,6 +79,7 @@ async def main():
         high_volatility_alerts = await alget.get_high_volatility_alerts(cur)
         horizontal_level_alerts = await alget.get_horizontal_level_alerts(cur)
         rsi_alerts = await alget.get_rsi_alerts(cur)
+        ma_alerts = await alget.get_ma_alerts(cur)
 
         # Use the imported global history, locked for thread safety
         async with history_getter.history_lock:
@@ -89,6 +92,7 @@ async def main():
         process_high_volatility(high_volatility_alerts, alerts_users_map, local_history, local_normal_trading_set)
         process_horizontal_level(horizontal_level_alerts, alerts_users_map, local_history, local_normal_trading_set)
         process_rsi(rsi_alerts, alerts_users_map, local_history, local_normal_trading_set)
+        process_ma(ma_alerts, alerts_users_map, local_history, local_normal_trading_set)
 
         # Send alerts to front
         for alert in alerts_users_map:
