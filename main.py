@@ -36,11 +36,11 @@ async def main():
                 ):
                     all_instruments.append(instrument.figi)
 
-        all_instruments = [
-            "BBG004730N88",
-            "BBG004731032",
-            "BBG004730RP0"
-        ]  # test
+        # all_instruments = [
+        #     "BBG004730N88",
+        #     "BBG004731032",
+        #     "BBG004730RP0"
+        # ]  # test
 
         timeframes = ["5min", "15min", "1h", "4h", "1d"]
         hist_dfs = history_getter.get_history(all_instruments)
