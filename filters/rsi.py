@@ -22,13 +22,11 @@ def rsi(alert, history):
 
     window = 14
 
-    df["avg_gain"] = (
-        df.groupby("instrument_id")["gain"]
-        .transform(lambda x: x.shift(1).rolling(window).mean())
+    df["avg_gain"] = df.groupby("instrument_id")["gain"].transform(
+        lambda x: x.ewm(alpha=1/window, adjust=False).mean()
     )
-    df["avg_loss"] = (
-        df.groupby("instrument_id")["loss"]
-        .transform(lambda x: x.shift(1).rolling(window).mean())
+    df["avg_loss"] = df.groupby("instrument_id")["loss"].transform(
+        lambda x: x.ewm(alpha=1/window, adjust=False).mean()
     )
 
     df["rs"] = df["avg_gain"] / df["avg_loss"]
